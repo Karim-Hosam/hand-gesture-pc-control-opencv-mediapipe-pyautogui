@@ -1,17 +1,10 @@
 import cv2
 import mediapipe as mp
-from src.util import get_angle, get_distance
 import pyautogui
 import time
-
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
-
-hands = mp_hands.Hands(
-    max_num_hands=1,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.7
-)
+from src.math_util import get_angle, get_distance
+from src.Mouse_Cursor_Move_Click import Mouse_Cursor_Move_Click
+from src.hand_setup import hands, mp_drawing, mp_hands
 
 click_start_time= None
 click_times=[]
@@ -48,28 +41,7 @@ while True:
             1 if hand_landmarks.landmark[tip].y<hand_landmarks.landmark[tip-2].y else 0
             for tip in [8,12,16,20]
         ]
-        
-        dist_thumb_index = get_distance([(thumb_tip.x, thumb_tip.y), (index_tip.x, index_tip.y)])
-        cv2.putText(frame, f"Distance: {dist_thumb_index:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        if dist_thumb_index < 50:
-            if not freeze_cursor:
-                freeze_cursor=True
-                click_times.append(time.time())
-                
-                if len(click_times) >= 2 and click_times[-1] - click_times[-2] < click_cooldown:
-                    pyautogui.doubleClick()
-                    cv2.putText(frame, "Double Click", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-                    click_times = []
-                else:
-                    pyautogui.click()
-                    cv2.putText(frame, "Single Click", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
-        else:
-            freeze_cursor=False  
-            
-        if not freeze_cursor:
-            cursor_x = int(thumb_tip.x * screen_w)
-            cursor_y = int(thumb_tip.y * screen_h)
-            pyautogui.moveTo(cursor_x, cursor_y, duration=0.05)
+        Mouse_Cursor_Move_Click(frame, thumb_tip, index_tip, freeze_cursor, click_times, click_cooldown, screen_w, screen_h)
                         
     cv2.imshow('Live Video', frame)
     if cv2.waitKey(1) == ord('q'):
