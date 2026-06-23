@@ -1,0 +1,1 @@
+# hand-gesture-pc-control-opencv-mediapipe-pyautogui
