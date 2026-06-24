@@ -1,12 +1,15 @@
-import numpy as np
+import math
 
-def get_angle(a,b,c):
-    radians=np.arctan(c[1]-b[1],c[0]-b[e]) - np.arctan(a[1]-b[1],a[0]-b[e])
-    angle=np.abs(np.degree(radians))
-    return angle
-def get_distance(landmark_list):
-    if len(landmark_list)<2:
-        return
-    (x1,y1),(x2,y2)=landmark_list[0],landmark_list[1]
-    l=np.hypot(x2-x1,y2-y1)
-    return np.interp(l,[0,1], [0,1000])
+def calculate_distance(point1, point2):
+    """حساب المسافة بين نقطتين"""
+    return math.hypot(point1.x - point2.x, point1.y - point2.y)
+
+def count_fingers(hand_landmarks):
+    """عد الأصابع المرفوعة (السبابة، الوسطى، البنصر، الخنصر)"""
+    tips = [8, 12, 16, 20]
+    fingers = [
+        1 if hand_landmarks.landmark[tip].y < hand_landmarks.landmark[tip-2].y else 0
+        for tip in tips
+    ]
+    total_fingers = sum(fingers)
+    return fingers, total_fingers
