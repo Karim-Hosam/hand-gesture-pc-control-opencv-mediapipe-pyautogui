@@ -3,7 +3,7 @@ import sys
 from src.hand_setup import HandSetup
 from src.Mouse_Cursor_Move_Click import MouseController
 from src.gesture_detector import GestureDetector
-
+##context: Path: hand-gesture-pc-control-opencv-mediapipe-pyautogui/main.py
 def main():
     print("\n[INFO] Hand Mouse Control Started...")
     
