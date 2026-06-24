@@ -10,11 +10,9 @@ class HandSetup:
         )
 
     def process_frame(self, rgb_frame):
-        """معالجة الفريم لاستخراج بيانات اليد"""
         return self.hands.process(rgb_frame)
 
     def draw_landmarks(self, frame, hand_landmarks):
-        """رسم النقاط والتوصيلات على اليد"""
         self.mp_drawing.draw_landmarks(
             frame, 
             hand_landmarks, 

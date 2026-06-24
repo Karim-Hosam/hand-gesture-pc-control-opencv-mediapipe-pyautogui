@@ -1,19 +1,25 @@
 import cv2
 import sys
+import streamlit as st
 from src.hand_setup import HandSetup
-from src.Mouse_Cursor_Move_Click import MouseController
+from src.mouse_controller import MouseController
 from src.gesture_detector import GestureDetector
-##context: Path: hand-gesture-pc-control-opencv-mediapipe-pyautogui/main.py
+from src.overlay_manager import OverlayManager
+
 def main():
     print("\n[INFO] Hand Mouse Control Started...")
     
-    # تهيئة الكلاسات
     hand_setup = HandSetup()
     mouse_controller = MouseController()
     gesture_detector = GestureDetector(mouse_controller)
+    overlay = OverlayManager()
     
-    # تشغيل الكاميرا
     cap = cv2.VideoCapture(0)
+    
+    st.title("Hand Gesture Control")
+    
+    frame_placeholder = st.empty()
+    
     if not cap.isOpened():
         print("Cannot open camera")
         sys.exit()
@@ -21,35 +27,41 @@ def main():
     while True:
         ret, frame = cap.read()
         if not ret:
+            print("Can't receive frame (stream end?). Exiting ...")
             break
             
         frame = cv2.flip(frame, 1) 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # معالجة الصورة
         result = hand_setup.process_frame(rgb)
         
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
                 hand_setup.draw_landmarks(frame, hand_landmarks)
                 action_text = gesture_detector.detect_and_perform(hand_landmarks)
-                
-                # طباعة النصوص على الشاشة
-                if action_text == "Screenshot Taken!":
-                    cv2.putText(frame, action_text, (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
-                elif action_text == "Scroll Up":
-                    cv2.putText(frame, action_text, (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                elif action_text == "Scroll Down":
-                    cv2.putText(frame, action_text, (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                elif action_text in ["Single Click", "Double Click"]:
-                    cv2.putText(frame, action_text, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
-                elif action_text in ["Next Tab ->", "<- Prev Tab"]:
-                    cv2.putText(frame, action_text, (10, 170), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
 
-        # عرض الفيديو
+                if action_text:
+                    if action_text == "Screenshot Taken!":
+                        overlay.show(action_text, (255, 255, 0), 1)
+                    elif action_text == "Scroll Up":
+                        overlay.show(action_text, (0, 255, 0), 1)
+                    elif action_text == "Scroll Down":
+                        overlay.show(action_text, (0, 0, 255), 1)
+                    elif action_text in ["Single Click", "Double Click"]:
+                        overlay.show(action_text, (255, 255, 0), 1)
+                    elif action_text in ["Next Tab ->", "<- Prev Tab"]:
+                        overlay.show(action_text, (255, 0, 255), 1)
+
+        overlay.draw(frame)
+
+        #==================================================================
+        # Display the frame in Streamlit or OpenCV window
+        #==================================================================
         cv2.imshow("Hand Control live video", frame)
-        
-        # الخروج عند الضغط على 'q'
+        #==================================================
+        # frame_placeholder.image(frame, channels="BGR")
+        #==================================================================
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 

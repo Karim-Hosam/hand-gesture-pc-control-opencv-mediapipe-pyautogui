@@ -1,63 +1,72 @@
+import os
 import time
-from src.math_util import calculate_distance, count_fingers
-from src.tab_switcher import TabSwitcher
+from src.util import calculate_distance, count_fingers, is_index_and_middle_beside_each_other
+from src.keyboard_controller import KeyboardController
 
 class GestureDetector:
     def __init__(self, mouse_controller):
         self.mouse = mouse_controller
+        self.keyboard = KeyboardController()
         self.screenshot_cooldown = 2
         self.last_screenshot_time = 0
         
-        # تهيئة كلاس التابات
-        self.tab_switcher = TabSwitcher()
 
     def detect_and_perform(self, hand_landmarks):
         thumb_tip = hand_landmarks.landmark[4]
         index_tip = hand_landmarks.landmark[8]
-        wrist_x = hand_landmarks.landmark[0].x 
+        middle_tip = hand_landmarks.landmark[12]
+        index_pip = hand_landmarks.landmark[6]
+        middle_pip = hand_landmarks.landmark[10]
         
         fingers, total_fingers = count_fingers(hand_landmarks)
         action_text = ""
         
-        # حساب المسافة للكليك أولاً
         dist = calculate_distance(thumb_tip, index_tip)
 
         # ==========================================
-        # 1. نظام الكليك (تلامس السبابة والإبهام)
+        # 1. Clicking System (Thumb and Index Finger Touching)
         # ==========================================
-        if dist < 0.04:
-            self.tab_switcher.reset()
+        if dist < 50:
+            self.keyboard.release_key('alt')
             action_text = self.mouse.click()
             return action_text
         else:
             self.mouse.freeze_cursor = False
 
         # ==========================================
-        # 2. وضع السكرين شوت (السبابة والخنصر فقط)
+        # 2. Screenshot Mode (Index and Pinky Fingers Only)
         # ==========================================
         if fingers == [1, 0, 0, 1]:
-            self.tab_switcher.reset() 
+            self.keyboard.release_key('alt')
             current_time = time.time()
             if current_time - self.last_screenshot_time > self.screenshot_cooldown:
-                filename = f"screenshot_{int(current_time)}.png"
+                # Create screenshots folder if it doesn't exist
+                screenshots_dir = "screenshots"
+                os.makedirs(screenshots_dir, exist_ok=True)
+
+                filename = os.path.join(
+                    screenshots_dir,
+                    f"screenshot_{int(current_time)}.png"
+                )
+
                 self.mouse.take_screenshot(filename)
                 print(f"Saved: {filename}")
                 self.last_screenshot_time = current_time
                 action_text = "Screenshot Taken!"
 
         # ==========================================
-        # 3. وضع تبديل التابات (السبابة والوسطى فقط)
+        # 3. Tab Switching Mode (Index and Middle Fingers Only)
         # ==========================================
         elif fingers == [1, 1, 0, 0]:
-            tab_action = self.tab_switcher.process_movement(wrist_x)
-            if tab_action:
-                action_text = tab_action
+            if is_index_and_middle_beside_each_other(index_tip, middle_tip, index_pip, middle_pip):
+                self.keyboard.hold_key('alt')
+                self.keyboard.press_key('tab')
 
         # ==========================================
-        # 4. وضع الـ Scroll (4 أصابع مفرودة)
+        # 4. Scroll Mode (4 Fingers Extended)
         # ==========================================
         elif total_fingers == 4:
-            self.tab_switcher.reset() 
+            self.keyboard.release_key('alt')
             if index_tip.y < 0.4:
                 self.mouse.scroll(60)
                 action_text = "Scroll Up"
@@ -66,17 +75,17 @@ class GestureDetector:
                 action_text = "Scroll Down"
 
         # ==========================================
-        # 5. وضع التحريك (السبابة فقط مفرودة)
+        # 5. Cursor Movement Mode (Index Finger Only Extended)
         # ==========================================
         elif fingers == [1, 0, 0, 0]:
-            self.tab_switcher.reset() 
+            self.keyboard.release_key('alt')
             if not self.mouse.freeze_cursor:
                 self.mouse.move_cursor(index_tip.x, index_tip.y)
 
         # ==========================================
-        # 6. وضع الخمول (أي شكل إيد تاني)
+        # 6. Idle Mode (Any Other Hand Shape)
         # ==========================================
         else:
-            self.tab_switcher.reset() 
+            self.keyboard.release_key('alt')
 
         return action_text
