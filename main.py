@@ -38,7 +38,7 @@ def main():
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
                 hand_setup.draw_landmarks(frame, hand_landmarks)
-                action_text = gesture_detector.detect_and_perform(hand_landmarks)
+                action_text = gesture_detector.detect_and_perform(hand_landmarks, frame)
 
                 if action_text:
                     if action_text == "Screenshot Taken!":

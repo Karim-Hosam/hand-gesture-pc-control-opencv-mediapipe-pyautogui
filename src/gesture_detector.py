@@ -1,6 +1,8 @@
 import os
 import time
-from src.util import calculate_distance, count_fingers, is_index_and_middle_beside_each_other
+import cv2
+import numpy as np
+from src.util import calculate_distance, count_fingers, is_index_and_middle_beside_each_other, get_angle
 from src.keyboard_controller import KeyboardController
 
 class GestureDetector:
@@ -10,23 +12,36 @@ class GestureDetector:
         self.screenshot_cooldown = 2
         self.last_screenshot_time = 0
         
+        # Drawing mode
+        self.prev_draw_point = None
+        self.canvas = None  
+        
 
-    def detect_and_perform(self, hand_landmarks):
+    def detect_and_perform(self, hand_landmarks, frame):
         thumb_tip = hand_landmarks.landmark[4]
         index_tip = hand_landmarks.landmark[8]
         middle_tip = hand_landmarks.landmark[12]
         index_pip = hand_landmarks.landmark[6]
         middle_pip = hand_landmarks.landmark[10]
+        pink_tip = hand_landmarks.landmark[20]
+        wrist = hand_landmarks.landmark[0]
         
         fingers, total_fingers = count_fingers(hand_landmarks)
         action_text = ""
         
         dist = calculate_distance(thumb_tip, index_tip)
+        
+        # h, w = frame.shape[:2]
+        # x, y = int(index_tip.x * w), int(index_tip.y * h)
+
+        # if self.canvas is None or self.canvas.shape != frame.shape:
+        #     self.canvas = np.zeros_like(frame)
+
 
         # ==========================================
         # 1. Clicking System (Thumb and Index Finger Touching)
         # ==========================================
-        if dist < 50:
+        if dist < 40:
             self.keyboard.release_key('alt')
             action_text = self.mouse.click()
             return action_text
@@ -82,8 +97,23 @@ class GestureDetector:
             if not self.mouse.freeze_cursor:
                 self.mouse.move_cursor(index_tip.x, index_tip.y)
 
+        #==========================================
+        # 6. Drawing Mode (Index and Thumb 90 Degrees)
+        #==========================================
+        # elif fingers == [1, 0, 0, 0] and get_angle(thumb_tip, wrist, pink_tip) > 90:
+        #     self.keyboard.release_key('alt') 
+        #     self.mouse.freeze_cursor = True
+
+        #     if self.prev_draw_point is None:
+        #         self.prev_draw_point = (index_tip.x, index_tip.y)
+        #     else:
+        #         cv2.line(self.canvas, self.prev_draw_point, (index_tip.x, index_tip.y), (0, 255, 0), 5)
+        #         self.prev_draw_point = (index_tip.x, index_tip.y)
+
+        #     action_text = "Drawing Mode"
+            
         # ==========================================
-        # 6. Idle Mode (Any Other Hand Shape)
+        # 7. Idle Mode (Any Other Hand Shape)
         # ==========================================
         else:
             self.keyboard.release_key('alt')

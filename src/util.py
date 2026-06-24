@@ -2,7 +2,7 @@ import math
 import numpy as np
 
 def get_angle(a,b,c):
-    radians=np.arctan(c[1]-b[1],c[0]-b[e]) - np.arctan(a[1]-b[1],a[0]-b[e])
+    radians=np.arctan(c.y-b.y,c.x-b.x) - np.arctan(a.y-b.y,a.x-b.x)
     angle=np.abs(np.degree(radians))
     return angle
 
