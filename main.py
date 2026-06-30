@@ -1,6 +1,5 @@
 import cv2
 import sys
-import streamlit as st
 from src.hand_setup import HandSetup
 from src.mouse_controller import MouseController
 from src.gesture_detector import GestureDetector
@@ -16,14 +15,12 @@ def main():
     
     cap = cv2.VideoCapture(0)
     
-    st.title("Hand Gesture Control")
-    
-    frame_placeholder = st.empty()
-    
     if not cap.isOpened():
         print("Cannot open camera")
         sys.exit()
 
+    window_name = overlay.setup_window_fixed_float_top_right_corner()
+ 
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -38,7 +35,7 @@ def main():
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
                 hand_setup.draw_landmarks(frame, hand_landmarks)
-                action_text = gesture_detector.detect_and_perform(hand_landmarks, frame)
+                action_text = gesture_detector.detect_and_perform(hand_landmarks, overlay, frame)
 
                 if action_text:
                     if action_text == "Screenshot Taken!":
@@ -54,13 +51,10 @@ def main():
 
         overlay.draw(frame)
 
-        #==================================================================
-        # Display the frame in Streamlit or OpenCV window
-        #==================================================================
-        cv2.imshow("Hand Control live video", frame)
-        #==================================================
-        # frame_placeholder.image(frame, channels="BGR")
-        #==================================================================
+        overlay.setup_overlay_mode_color_eraser(frame)
+        frame = overlay.setup_overlay_drawing_frame(frame)  
+        
+        cv2.imshow(window_name, frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
