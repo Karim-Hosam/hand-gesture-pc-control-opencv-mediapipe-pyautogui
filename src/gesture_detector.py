@@ -10,6 +10,8 @@ class GestureDetector:
     def __init__(self, mouse_controller):
         self.mouse = mouse_controller
         self.keyboard = KeyboardController()
+        
+        # Cooldowns to prevent triggering actions multiple times rapidly
         self.screenshot_cooldown = 2
         self.last_screenshot_time = 0
         
@@ -22,10 +24,12 @@ class GestureDetector:
         self.zoomit_cooldown = 3
         self.last_zoomit_time = 0
         
+        # Track previous point for drawing continuous lines
         self.xp, self.yp = 0, 0   
         
 
     def detect_and_perform(self, hand_landmarks, overlay, frame):
+        # Extract key landmarks for easier reference
         thumb_tip = hand_landmarks.landmark[4]
         index_tip = hand_landmarks.landmark[8]
         index_pip = hand_landmarks.landmark[6]
@@ -42,6 +46,7 @@ class GestureDetector:
         
         dist_between_thumb_tip_index_pip = calculate_distance(thumb_tip, index_pip)
 
+        # Create variables to check if the index finger is interacting with the on-screen UI buttons
         h, w = frame.shape[:2]
         bef_aft_h, bef_aft_w = overlay.Before[0].shape[:2]
         is_index_inside_before_box = ((index_tip.x * w > overlay.before_btn_x) and (index_tip.x * w < overlay.before_btn_x + bef_aft_w) and (index_tip.y * h < bef_aft_h + 10))
@@ -55,6 +60,7 @@ class GestureDetector:
             
             current_time = time.time()
             if current_time - self.last_change_mode_time > self.change_mode_cooldown:
+                # Cycle through the available modes (Control, Drawing, Off)
                 if is_index_inside_before_box:
                     overlay.Currnt_Mode_index = (overlay.Currnt_Mode_index - 1) % len(overlay.ModesList_img)
                 elif is_index_inside_after_box:
@@ -67,6 +73,7 @@ class GestureDetector:
                 self.last_change_mode_time = current_time
             
         if(overlay.Currnt_Mode_txt == "Control Mode"):
+            # Clear drawing canvas while in Control Mode
             overlay.frameCanvas = np.zeros((720, 1280, 3), np.uint8)
             # ==========================================
             # 1. Clicking System (Thumb and Index Finger Touching)
@@ -104,6 +111,7 @@ class GestureDetector:
             # ==========================================
             elif fingers == [1, 1, 0, 0]:
                 if is_index_and_middle_beside_each_other(index_tip, middle_tip, index_pip, middle_pip):
+                    # Hold Alt and press Tab to bring up the window switcher
                     self.keyboard.hold_key('alt')
                     self.keyboard.press_key('tab')
 
@@ -112,6 +120,7 @@ class GestureDetector:
             # ==========================================
             elif total_fingers == 4:
                 self.keyboard.release_key('alt')
+                # Scroll based on the vertical position of the hand
                 if index_tip.y < 0.4:
                     self.mouse.scroll(60)
                     action_text = "Scroll Up"
@@ -136,14 +145,19 @@ class GestureDetector:
         elif overlay.Currnt_Mode_txt == "Drawing Mode":
             self.keyboard.release_key('alt')
             
+            # Hovering (Index finger only)
             if fingers == [1, 0, 0, 0]:
                 h, w = frame.shape[:2]
                 cx, cy = int(index_tip.x * w), int(index_tip.y * h)
+                
+                # Draw a preview circle on the index finger tip
                 cv2.circle(frame, (cx, cy), 10, overlay.drawColor, cv2.FILLED)
                 
                 action_text = "Drawing Mode"
                 
+                # Draw on the canvas if thumb and index finger PIP joint are close enough (pinch gesture)
                 if dist_between_thumb_tip_index_pip < 60:
+                    # Reset starting point if we just started drawing
                     if self.xp == 0 and self.yp == 0:
                         self.xp, self.yp = cx, cy
 
@@ -159,15 +173,19 @@ class GestureDetector:
                 else:
                     self.xp, self.yp = 0, 0
                     
+            # Color Selection Mode (Index and Pinky Fingers)
             elif fingers == [1, 0, 0, 1]:
                 current_time = time.time()
                 if current_time - self.last_change_color_time > self.change_color_cooldown:
+                    # Cycle through the available brush colors
                     overlay.color_in_use_index = (overlay.color_in_use_index + 1) % len(overlay.ColorsList_img)
                     overlay.color_in_use_img = overlay.ColorsList_img[overlay.color_in_use_index]
                     overlay.color_in_use_txt = overlay.ColorsList_txt[overlay.color_in_use_index]
                     action_text = f"Color Changed to: {overlay.color_in_use_txt}"
                     self.last_change_color_time = current_time
                     overlay.is_Eraser_used = False
+                    
+                    # Apply the selected color to the brush
                     if overlay.color_in_use_txt == "Blue":
                         overlay.drawColor = (255, 0, 0)
                     elif overlay.color_in_use_txt == "Green":
@@ -183,6 +201,7 @@ class GestureDetector:
                     else:
                         overlay.drawColor = (255, 255, 255)
                         
+            # Eraser Selection Mode (Index, Middle, and Ring Fingers)
             elif fingers == [1, 1, 1, 0]:
                 current_time = time.time()
                 if current_time - self.last_change_color_time > self.change_color_cooldown:
@@ -190,6 +209,7 @@ class GestureDetector:
                         overlay.is_Eraser_used = True
                         action_text = "Eraser Used"
                         self.last_change_color_time = current_time
+                        # Erase by drawing in black, which will be filtered out by bitwise operations
                         overlay.drawColor = (0, 0, 0)
                 
             elif fingers == [1, 1, 1, 1]:
@@ -200,6 +220,7 @@ class GestureDetector:
                     pyautogui.hotkey('ctrl', 'shift', '4')
                     self.last_zoomit_time = current_time
             
+            # Sub-mode: If we are actively in ZoomIt mode, we can still move the cursor or click
             if overlay.is_in_ZoomIt:
                 if fingers == [1, 0, 0, 0]:
                     if not self.mouse.freeze_cursor:
@@ -212,7 +233,7 @@ class GestureDetector:
                 else:
                     self.mouse.freeze_cursor = False
                 
-                        
+        # Off Mode: Clear canvas and do nothing else
         elif overlay.Currnt_Mode_txt == "Off Mode":
             overlay.frameCanvas = np.zeros((720, 1280, 3), np.uint8)
                 

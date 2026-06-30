@@ -10,15 +10,18 @@ class MouseController:
         self.prev_x, self.prev_y = 0, 0
 
     def move_cursor(self, index_x, index_y):
+        # Convert normalized hand coordinates (0 to 1) to actual screen pixels
         screen_x = int(index_x * self.screen_w)
         screen_y = int(index_y * self.screen_h)
         pyautogui.moveTo(screen_x, screen_y, duration=0.05)
         self.prev_x, self.prev_y = screen_x, screen_y
 
     def click(self):
+        # Freeze the cursor during a click to maintain pointer stability
         self.freeze_cursor = True
         self.click_times.append(time.time())
         
+        # Determine if the last two clicks were fast enough to register as a double-click
         if len(self.click_times) >= 2 and self.click_times[-1] - self.click_times[-2] < 0.4:
             pyautogui.doubleClick()
             self.click_times = []
@@ -28,7 +31,9 @@ class MouseController:
             return "Single Click"
 
     def scroll(self, amount):
+        # Scroll the mouse wheel by the given amount
         pyautogui.scroll(amount)
 
     def take_screenshot(self, filename):
+        # Capture and save a screenshot of the primary monitor
         pyautogui.screenshot(filename)
