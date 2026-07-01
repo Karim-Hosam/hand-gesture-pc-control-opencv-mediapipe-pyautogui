@@ -29,6 +29,12 @@ class MouseController:
         else:
             pyautogui.click()
             return "Single Click"
+        
+    def mouse_down(self):
+        pyautogui.mouseDown()
+        
+    def mouse_up(self):
+        pyautogui.mouseUp()
 
     def scroll(self, amount):
         # Scroll the mouse wheel by the given amount

@@ -1,9 +1,9 @@
 import cv2
 import sys
 from src.hand_setup import HandSetup
-from src.mouse_controller import MouseController
-from src.gesture_detector import GestureDetector
-from src.overlay_manager import OverlayManager
+from src.controllers import MouseController
+from src.gestures import GestureDetector
+from src.overlay import OverlayManager
 
 def main():
     print("\n[INFO] Hand Mouse Control Started...")

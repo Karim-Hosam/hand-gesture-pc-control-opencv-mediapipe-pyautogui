@@ -27,3 +27,7 @@ class KeyboardController:
         pyautogui.keyUp(key)
         return f"Key '{key}' Released"
     
+    def hotkey(self, *keys):
+        # Simulate pressing a combination of keys simultaneously
+        pyautogui.hotkey(*keys)
+        return f"Hotkey '{'+'.join(keys)}' Pressed"

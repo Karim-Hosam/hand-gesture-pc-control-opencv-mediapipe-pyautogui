@@ -1,7 +1,9 @@
 import time
-import cv2
 import os
+import cv2
 import numpy as np
+from src.overlay.asset_loader import load_assets
+from src.overlay.drawing_canvas import overlay_png, DrawingCanvas
 
 class OverlayManager:
     def __init__(self):
@@ -14,48 +16,24 @@ class OverlayManager:
         self.brushThickness = 10
         self.eraserThickness = 100
         self.drawColor = (255, 0, 0)
-        self.frameCanvas = np.zeros((480, 640, 3), np.uint8)
+        self._canvas = DrawingCanvas()
         
+        # Load UI assets from the img folder
         self.folderPath = "img"
         self.myList = os.listdir(self.folderPath)
+        assets = load_assets(self.folderPath)
         
-        self.ModesList_img = []
-        self.ModesList_txt = []
+        self.ModesList_img = assets['ModesList_img']
+        self.ModesList_txt = assets['ModesList_txt']
         
-        self.Before = []
-        self.After = []
+        self.Before = assets['Before']
+        self.After = assets['After']
         
-        self.ColorsList_img = []
-        self.ColorsList_txt = []
-        self.Eraser = []
-        self.ZoomIt_Logo = []
-        self.is_in_ZoomIt = False
+        self.ColorsList_img = assets['ColorsList_img']
+        self.ColorsList_txt = assets['ColorsList_txt']
+        self.Eraser = assets['Eraser']
         self.is_Eraser_used = False
         
-        # Categorize loaded images into their respective UI lists
-        for imPath in self.myList:
-            image = cv2.imread(f'{self.folderPath}/{imPath}', cv2.IMREAD_UNCHANGED)
-            
-            if "Mode" in imPath:
-                self.ModesList_img.append(image)
-                self.ModesList_txt.append(imPath.split(".")[0])
-            
-            elif "Color" in imPath:
-                self.ColorsList_img.append(image)
-                self.ColorsList_txt.append(imPath.split(" Color")[0])
-                
-            elif imPath == "Eraser.png":
-                self.Eraser.append(image)
-                
-            elif imPath == "Before.png":
-                self.Before.append(image)
-                
-            elif imPath == "After.png":
-                self.After.append(image)
-                
-            elif imPath == "ZoomIt_Logo.png":
-                self.ZoomIt_Logo.append(image)
-                
         # Set default active mode and color
         self.Currnt_Mode_index = 0
         self.Currnt_Mode_img = self.ModesList_img[self.Currnt_Mode_index]
@@ -72,6 +50,14 @@ class OverlayManager:
         self.after_btn_x = 0
         self.current_mode_btn_x= 0
         self.before_btn_x = 0
+
+    @property
+    def frameCanvas(self):
+        return self._canvas.frameCanvas
+    
+    @frameCanvas.setter
+    def frameCanvas(self, value):
+        self._canvas.frameCanvas = value
 
     def show(self, text, color=(255, 255, 255), duration=1):
         # Queue a text message to be displayed on screen for a given duration
@@ -124,30 +110,6 @@ class OverlayManager:
             cv2.LINE_AA
         )
         
-    def overlay_png(bg, fg, x, y):
-        # Overlays a transparent PNG onto a background image at the given (x,y) coordinates
-        bh, bw = bg.shape[:2]
-        fh, fw = fg.shape[:2]
-
-        # Ignore if the overlay is out of bounds
-        if x < 0 or y < 0 or x + fw > bw or y + fh > bh:
-            return bg
-
-        # Handle images with an alpha channel
-        if fg.shape[2] == 4:
-            alpha = fg[:, :, 3] / 255.0
-            fg_rgb = fg[:, :, :3]
-
-            for c in range(3):
-                bg[y:y+fh, x:x+fw, c] = (
-                    alpha * fg_rgb[:, :, c] + (1 - alpha) * bg[y:y+fh, x:x+fw, c]
-                )
-            bg[y:y+fh, x:x+fw] = bg[y:y+fh, x:x+fw].astype(np.uint8)
-        else:
-            bg[y:y+fh, x:x+fw] = fg
-
-        return bg
-    
     def setup_window_fixed_float_top_right_corner(self):
         # Configure the main display window to sit at the top right of the screen
         window_name = "Hand Control live video"
@@ -175,37 +137,19 @@ class OverlayManager:
         self.after_btn_x = w - bef_aft_w - 10
         self.current_mode_btn_x= self.after_btn_x - current_mode_w   
         self.before_btn_x = self.current_mode_btn_x - bef_aft_w
-        frame = OverlayManager.overlay_png(frame, self.After[0], self.after_btn_x, 5)
-        frame = OverlayManager.overlay_png(frame, self.Before[0], self.before_btn_x, 5)
-        frame = OverlayManager.overlay_png(frame, self.Currnt_Mode_img, self.current_mode_btn_x, 15)
+        frame = overlay_png(frame, self.After[0], self.after_btn_x, 5)
+        frame = overlay_png(frame, self.Before[0], self.before_btn_x, 5)
+        frame = overlay_png(frame, self.Currnt_Mode_img, self.current_mode_btn_x, 15)
         
         # Display the active tool icon in Drawing Mode
-        if(self.Currnt_Mode_txt == "Drawing Mode"):
-            if(self.is_in_ZoomIt):
-                frame = OverlayManager.overlay_png(frame, self.ZoomIt_Logo[0], 2, 2)
+        if((self.Currnt_Mode_txt == "Drawing Mode") or (self.Currnt_Mode_txt == "ZoomIt Mode")):
                 
-            elif(self.is_Eraser_used):
-                frame = OverlayManager.overlay_png(frame, self.Eraser[0], 2, 2)
+            if(self.is_Eraser_used):
+                frame = overlay_png(frame, self.Eraser[0], 2, 2)
                 
             else:
-                frame = OverlayManager.overlay_png(frame, self.color_in_use_img, 2, 2)
+                frame = overlay_png(frame, self.color_in_use_img, 2, 2)
         
-    
+
     def setup_overlay_drawing_frame(self, frame):
-        # Merge the drawing canvas layer with the live webcam feed
-        h, w = frame.shape[:2]
-
-        # Resize the canvas if the webcam feed size has changed
-        if self.frameCanvas.shape[:2] != (h, w):
-            self.frameCanvas = np.zeros((h, w, 3), np.uint8)
-
-        # Create an inverted mask of the drawing canvas to poke a hole in the webcam frame
-        frameGray = cv2.cvtColor(self.frameCanvas, cv2.COLOR_BGR2GRAY)
-        _, frameInv = cv2.threshold(frameGray, 15, 255, cv2.THRESH_BINARY_INV)
-        frameInv = cv2.cvtColor(frameInv, cv2.COLOR_GRAY2BGR)
-
-        # Apply the mask and merge the colored canvas drawing on top
-        frame = cv2.bitwise_and(frame, frameInv)
-        frame = cv2.bitwise_or(frame, self.frameCanvas)
-
-        return frame
+        return self._canvas.composite(frame)
