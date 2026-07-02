@@ -16,12 +16,13 @@ class DrawingModeHandler:
     
         # Track previous point for drawing continuous lines
         self.xp, self.yp = 0, 0
+        self.min_draw_step = 3
 
-    def handle(self, fingers, total_fingers, index_tip,
-               dist_between_thumb_tip_index_pip, is_index_inside_before_box, is_index_inside_after_box,
-               overlay, frame):
+    def handle(self, fingers, index_tip, dist_between_thumb_tip_index_pip, overlay, frame, is_holding_alt, is_canvas_cleared):
         action_text = ""
-        self.keyboard.release_key('alt')
+        if is_holding_alt:
+            self.keyboard.release_key('alt')
+            is_holding_alt = False
         
         # Hovering (Index finger only)
         if fingers == [1, 0, 0, 0]:
@@ -38,6 +39,14 @@ class DrawingModeHandler:
                 # Reset starting point if we just started drawing
                 if self.xp == 0 and self.yp == 0:
                     self.xp, self.yp = cx, cy
+                    return action_text, False, is_holding_alt, is_canvas_cleared
+
+                dx = cx - self.xp
+                dy = cy - self.yp
+
+                # Ignore tiny jitter
+                if (dx * dx + dy * dy) < (self.min_draw_step * self.min_draw_step):
+                    return action_text, False, is_holding_alt, is_canvas_cleared
 
                 cv2.line(
                     overlay.frameCanvas,
@@ -85,6 +94,7 @@ class DrawingModeHandler:
             if current_time - self.last_change_color_time > self.change_color_cooldown:
                 if(not overlay.is_Eraser_used):
                     overlay.is_Eraser_used = True
+                    overlay.is_Full_Screen_Eraser_used = False
                     action_text = "Eraser Used"
                     self.last_change_color_time = current_time
                     # Erase by drawing in black, which will be filtered out by bitwise operations
@@ -93,9 +103,10 @@ class DrawingModeHandler:
         elif fingers == [1, 1, 1, 1]:
             current_time = time.time()
             if current_time - self.last_change_color_time > self.change_color_cooldown:
-                if(not overlay.is_Eraser_used):
-                    overlay.is_Eraser_used = True
-                    action_text = "Eraser Used"
+                if(not overlay.is_Full_Screen_Eraser_used):
+                    overlay.is_Eraser_used = False
+                    overlay.is_Full_Screen_Eraser_used = True
+                    action_text = "Full Screen Eraser Used"
                     self.last_change_color_time = current_time 
                     # Erase by drawing in black, which will be filtered out by bitwise operations
                     overlay.drawColor = (0, 0, 0)      
@@ -103,4 +114,4 @@ class DrawingModeHandler:
                     overlay.frameCanvas = np.zeros((720, 1280, 3), np.uint8)
 
         
-        return action_text, False
+        return action_text, False, is_holding_alt, is_canvas_cleared

@@ -33,6 +33,7 @@ class OverlayManager:
         self.ColorsList_txt = assets['ColorsList_txt']
         self.Eraser = assets['Eraser']
         self.is_Eraser_used = False
+        self.is_Full_Screen_Eraser_used = False
         
         # Set default active mode and color
         self.Currnt_Mode_index = 0

@@ -31,14 +31,17 @@ class DrawingCanvas:
     """Manages the drawing canvas layer and its compositing with the live feed."""
     def __init__(self):
         self.frameCanvas = np.zeros((480, 640, 3), np.uint8)
-    
+
     def composite(self, frame):
-        """Merge the drawing canvas layer with the live webcam feed."""
+        if not np.any(self.frameCanvas):
+            return frame
+
         h, w = frame.shape[:2]
 
         # Resize the canvas if the webcam feed size has changed
         if self.frameCanvas.shape[:2] != (h, w):
             self.frameCanvas = np.zeros((h, w, 3), np.uint8)
+            return frame
 
         # Create an inverted mask of the drawing canvas to poke a hole in the webcam frame
         frameGray = cv2.cvtColor(self.frameCanvas, cv2.COLOR_BGR2GRAY)

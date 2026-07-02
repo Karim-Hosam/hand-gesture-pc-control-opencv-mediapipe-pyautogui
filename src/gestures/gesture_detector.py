@@ -19,6 +19,8 @@ class GestureDetector:
         self.change_mode_cooldown = 0.5
         self.last_change_mode_time = 0
         self.is_in_zoomit_mode = False
+        self.is_holding_alt = False
+        self.is_canvas_cleared = False
 
     def detect_and_perform(self, hand_landmarks, overlay, frame):
         # Extract key landmarks for easier reference
@@ -48,7 +50,9 @@ class GestureDetector:
         # 0. Change Mode
         # ==========================================
         if dist_between_thumb_tip_index_pip < 40 and (is_index_inside_before_box or is_index_inside_after_box):
-            self.keyboard.release_key('alt')
+            if self.is_holding_alt:
+                self.keyboard.release_key('alt')
+                self.is_holding_alt = False
             
             current_time = time.time()
             if current_time - self.last_change_mode_time > self.change_mode_cooldown:
@@ -66,13 +70,16 @@ class GestureDetector:
             
         if(overlay.Currnt_Mode_txt == "Control Mode"):
             if self.is_in_zoomit_mode:
+                self.mouse.mouse_up()  # Ensure mouse is up before exiting ZoomIt
                 self.keyboard.press_key('esc')
                 self.is_in_zoomit_mode = False
                 
-            result, early_return = self.control_handler.handle(
-                fingers, total_fingers, index_tip, middle_tip, index_pip, middle_pip,
-                dist_between_thumb_tip_index_pip, is_index_inside_before_box, is_index_inside_after_box, overlay
+            result, early_return, is_holding_alt, is_canvas_cleared = self.control_handler.handle(
+                fingers, total_fingers, index_tip, middle_tip, index_pip, middle_pip, dist_between_thumb_tip_index_pip, 
+                is_index_inside_before_box, is_index_inside_after_box, self.is_holding_alt, self.is_canvas_cleared, overlay
             )
+            self.is_holding_alt = is_holding_alt
+            self.is_canvas_cleared = is_canvas_cleared
             if result:
                 action_text = result
             if early_return:
@@ -80,13 +87,15 @@ class GestureDetector:
                 
         elif overlay.Currnt_Mode_txt == "Drawing Mode":
             if self.is_in_zoomit_mode:
+                self.mouse.mouse_up()  # Ensure mouse is up before exiting ZoomIt
                 self.keyboard.press_key('esc')
                 self.is_in_zoomit_mode = False
                 
-            result, early_return = self.drawing_handler.handle(
-                fingers, total_fingers, index_tip, dist_between_thumb_tip_index_pip, 
-                is_index_inside_before_box, is_index_inside_after_box, overlay, frame
+            result, early_return, is_holding_alt, is_canvas_cleared = self.drawing_handler.handle(
+                fingers, index_tip, dist_between_thumb_tip_index_pip, overlay, frame, self.is_holding_alt, self.is_canvas_cleared
             )
+            self.is_holding_alt = is_holding_alt
+            self.is_canvas_cleared = is_canvas_cleared
             if result:
                 action_text = result
             if early_return:
@@ -97,10 +106,12 @@ class GestureDetector:
                 self.keyboard.hotkey('ctrl', 'shift', '4')
                 self.is_in_zoomit_mode = True
                 
-            result, early_return = self.zoomit_handler.handle(
-                fingers, total_fingers, index_tip, dist_between_thumb_tip_index_pip, 
-                is_index_inside_before_box, is_index_inside_after_box, overlay, frame
+            result, early_return, is_holding_alt, is_canvas_cleared = self.zoomit_handler.handle(
+                fingers, index_tip, dist_between_thumb_tip_index_pip, 
+                is_index_inside_before_box, is_index_inside_after_box, overlay, self.is_holding_alt, self.is_canvas_cleared
             )
+            self.is_holding_alt = is_holding_alt
+            self.is_canvas_cleared = is_canvas_cleared
             if result:
                 action_text = result
             if early_return:
@@ -109,9 +120,11 @@ class GestureDetector:
         # Off Mode: Clear canvas and do nothing else
         elif overlay.Currnt_Mode_txt == "Off Mode":
             if self.is_in_zoomit_mode:
+                self.mouse.mouse_up()  # Ensure mouse is up before exiting ZoomIt
                 self.keyboard.press_key('esc')
                 self.is_in_zoomit_mode = False
-                
-            overlay.frameCanvas = np.zeros((720, 1280, 3), np.uint8)
+            if not self.is_canvas_cleared:
+                overlay.frameCanvas = np.zeros((720, 1280, 3), np.uint8)
+                self.is_canvas_cleared = True
                 
         return action_text

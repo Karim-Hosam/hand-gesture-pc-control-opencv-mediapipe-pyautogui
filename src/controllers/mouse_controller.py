@@ -8,12 +8,19 @@ class MouseController:
         self.click_times = []
         self.freeze_cursor = False
         self.prev_x, self.prev_y = 0, 0
+        self.is_mouse_down = False
 
     def move_cursor(self, index_x, index_y):
         # Convert normalized hand coordinates (0 to 1) to actual screen pixels
         screen_x = int(index_x * self.screen_w)
         screen_y = int(index_y * self.screen_h)
-        pyautogui.moveTo(screen_x, screen_y, duration=0.05)
+
+        # Skip useless repeated moves
+        if (screen_x, screen_y) == (self.prev_x, self.prev_y):
+            return
+
+        # No animation here — animation adds lag
+        pyautogui.moveTo(screen_x, screen_y)
         self.prev_x, self.prev_y = screen_x, screen_y
 
     def click(self):
@@ -31,10 +38,14 @@ class MouseController:
             return "Single Click"
         
     def mouse_down(self):
-        pyautogui.mouseDown()
-        
+        if not self.is_mouse_down:
+            pyautogui.mouseDown()
+            self.is_mouse_down = True
+
     def mouse_up(self):
-        pyautogui.mouseUp()
+        if self.is_mouse_down:
+            pyautogui.mouseUp()
+            self.is_mouse_down = False
 
     def scroll(self, amount):
         # Scroll the mouse wheel by the given amount
