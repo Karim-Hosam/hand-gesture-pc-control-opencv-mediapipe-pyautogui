@@ -9,19 +9,29 @@ class MouseController:
         self.freeze_cursor = False
         self.prev_x, self.prev_y = 0, 0
         self.is_mouse_down = False
+        self.smooth_x = None
+        self.smooth_y = None
 
-    def move_cursor(self, index_x, index_y):
-        # Convert normalized hand coordinates (0 to 1) to actual screen pixels
+    def move_cursor(self, index_x, index_y, smooth=False):
         screen_x = int(index_x * self.screen_w)
         screen_y = int(index_y * self.screen_h)
 
-        # Skip useless repeated moves
         if (screen_x, screen_y) == (self.prev_x, self.prev_y):
             return
 
-        # No animation here — animation adds lag
-        pyautogui.moveTo(screen_x, screen_y)
-        self.prev_x, self.prev_y = screen_x, screen_y
+        if smooth:
+            alpha = 0.35  # lower = smoother, higher = faster
+            if self.smooth_x is None:
+                self.smooth_x, self.smooth_y = screen_x, screen_y
+            else:
+                self.smooth_x = int(alpha * screen_x + (1 - alpha) * self.smooth_x)
+                self.smooth_y = int(alpha * screen_y + (1 - alpha) * self.smooth_y)
+
+            pyautogui.moveTo(self.smooth_x, self.smooth_y)
+            self.prev_x, self.prev_y = self.smooth_x, self.smooth_y
+        else:
+            pyautogui.moveTo(screen_x, screen_y)
+            self.prev_x, self.prev_y = screen_x, screen_y
 
     def click(self):
         # Freeze the cursor during a click to maintain pointer stability

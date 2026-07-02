@@ -13,13 +13,8 @@ class ControlModeHandler:
         self.last_screenshot_time = 0
 
     def handle(self, fingers, total_fingers, index_tip, middle_tip, index_pip, middle_pip, dist_between_thumb_tip_index_pip, 
-               is_index_inside_before_box, is_index_inside_after_box, is_holding_alt, is_canvas_cleared, overlay):
+               is_index_inside_before_box, is_index_inside_after_box, is_holding_alt, overlay):
         action_text = ""
-        
-        # Clear drawing canvas while in Control Mode
-        if not is_canvas_cleared:
-            overlay.frameCanvas = np.zeros((720, 1280, 3), np.uint8)
-            is_canvas_cleared = True
             
         # ==========================================
         # 1. Clicking System (Thumb and Index Finger Touching)
@@ -29,7 +24,7 @@ class ControlModeHandler:
                 self.keyboard.release_key('alt')
                 is_holding_alt = False
             action_text = self.mouse.click()
-            return action_text, True, is_holding_alt, is_canvas_cleared
+            return action_text, True, is_holding_alt
         else:
             self.mouse.freeze_cursor = False
 
@@ -100,4 +95,4 @@ class ControlModeHandler:
                 self.keyboard.release_key('alt')
                 is_holding_alt = False
         
-        return action_text, False, is_holding_alt, is_canvas_cleared
+        return action_text, False, is_holding_alt

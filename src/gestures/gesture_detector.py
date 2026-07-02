@@ -21,6 +21,7 @@ class GestureDetector:
         self.is_in_zoomit_mode = False
         self.is_holding_alt = False
         self.is_canvas_cleared = False
+        self.prev_mode = None
 
     def detect_and_perform(self, hand_landmarks, overlay, frame):
         # Extract key landmarks for easier reference
@@ -67,6 +68,19 @@ class GestureDetector:
                 action_text = f"Mode Changed to: {overlay.Currnt_Mode_txt}"
                 
                 self.last_change_mode_time = current_time
+                
+        current_mode = overlay.Currnt_Mode_txt
+
+        # clear canvas only when leaving Drawing Mode
+        if self.prev_mode == "Drawing Mode" and current_mode != "Drawing Mode":
+            overlay.frameCanvas = np.zeros_like(overlay.frameCanvas)
+            self.is_canvas_cleared = True
+
+        # when entering Drawing Mode, allow future clear again if needed
+        if current_mode == "Drawing Mode":
+            self.is_canvas_cleared = False
+
+        self.prev_mode = current_mode
             
         if(overlay.Currnt_Mode_txt == "Control Mode"):
             if self.is_in_zoomit_mode:
@@ -74,12 +88,11 @@ class GestureDetector:
                 self.keyboard.press_key('esc')
                 self.is_in_zoomit_mode = False
                 
-            result, early_return, is_holding_alt, is_canvas_cleared = self.control_handler.handle(
+            result, early_return, is_holding_alt = self.control_handler.handle(
                 fingers, total_fingers, index_tip, middle_tip, index_pip, middle_pip, dist_between_thumb_tip_index_pip, 
-                is_index_inside_before_box, is_index_inside_after_box, self.is_holding_alt, self.is_canvas_cleared, overlay
+                is_index_inside_before_box, is_index_inside_after_box, self.is_holding_alt, overlay
             )
             self.is_holding_alt = is_holding_alt
-            self.is_canvas_cleared = is_canvas_cleared
             if result:
                 action_text = result
             if early_return:
@@ -106,12 +119,11 @@ class GestureDetector:
                 self.keyboard.hotkey('ctrl', 'shift', '4')
                 self.is_in_zoomit_mode = True
                 
-            result, early_return, is_holding_alt, is_canvas_cleared = self.zoomit_handler.handle(
+            result, early_return, is_holding_alt = self.zoomit_handler.handle(
                 fingers, index_tip, dist_between_thumb_tip_index_pip, 
-                is_index_inside_before_box, is_index_inside_after_box, overlay, self.is_holding_alt, self.is_canvas_cleared
+                is_index_inside_before_box, is_index_inside_after_box, overlay, self.is_holding_alt
             )
             self.is_holding_alt = is_holding_alt
-            self.is_canvas_cleared = is_canvas_cleared
             if result:
                 action_text = result
             if early_return:

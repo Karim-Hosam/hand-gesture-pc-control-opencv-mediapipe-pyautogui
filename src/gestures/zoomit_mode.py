@@ -18,21 +18,16 @@ class ZoomItModeHandler:
         self.xp, self.yp = 0, 0
         self.is_dragging = False
 
-    def handle(self, fingers, index_tip, dist_between_thumb_tip_index_pip, is_index_inside_before_box, 
-               is_index_inside_after_box, overlay, is_holding_alt, is_canvas_cleared):
+    def handle(self, fingers, index_tip, dist_between_thumb_tip_index_pip, 
+               is_index_inside_before_box, is_index_inside_after_box, overlay, is_holding_alt):
         action_text = ""
         if is_holding_alt:
             self.keyboard.release_key('alt')
             is_holding_alt = False
         
-        # Clear drawing canvas while in Control Mode
-        if not is_canvas_cleared:
-            overlay.frameCanvas = np.zeros((720, 1280, 3), np.uint8)
-            is_canvas_cleared = True
-        
         # Hovering (Index finger only)
         if fingers == [1, 0, 0, 0]:
-            self.mouse.move_cursor(index_tip.x, index_tip.y)
+            self.mouse.move_cursor(index_tip.x, index_tip.y, smooth=True)
 
             is_pinch = (
                 dist_between_thumb_tip_index_pip < 60
@@ -44,7 +39,7 @@ class ZoomItModeHandler:
                     self.mouse.mouse_down()
                     self.is_dragging = True
                 action_text = "ZoomIt Drag"
-                return action_text, False, is_holding_alt, is_canvas_cleared
+                return action_text, False, is_holding_alt
             else:
                 if self.is_dragging:
                     self.mouse.mouse_up()
@@ -101,4 +96,4 @@ class ZoomItModeHandler:
                     self.keyboard.press_key('e')  # Assuming 'e' is the eraser shortcut in ZoomIt
             
         
-        return action_text, False, is_holding_alt, is_canvas_cleared
+        return action_text, False, is_holding_alt
